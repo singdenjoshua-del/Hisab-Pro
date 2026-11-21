@@ -1,0 +1,6 @@
+{
+  "name": "Hisab Pro",
+  "description": "Premium bilingual Nepali & English expense manager with Bikram Sambat dates, 12+ themes, multi-mode app lock, and Firebase Cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

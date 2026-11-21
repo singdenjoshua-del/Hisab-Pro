@@ -1,0 +1,220 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidAccount(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+             data.accountType in ['CASH', 'BANK', 'WALLET', 'SAVINGS'] &&
+             (data.balance is int || data.balance is float) &&
+             data.iconKey is string && data.iconKey.size() >= 1 && data.iconKey.size() <= 40 &&
+             data.colorHex is string && data.colorHex.size() >= 1 && data.colorHex.size() <= 16;
+    }
+
+    function isValidCategory(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 50 &&
+             data.nameNe is string && data.nameNe.size() >= 1 && data.nameNe.size() <= 80 &&
+             data.type in ['INCOME', 'EXPENSE'] &&
+             data.iconKey is string && data.iconKey.size() >= 1 && data.iconKey.size() <= 40 &&
+             data.colorHex is string && data.colorHex.size() >= 1 && data.colorHex.size() <= 16 &&
+             data.systemDefault is bool;
+    }
+
+    function isValidCustomer(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.phone is string && data.phone.size() <= 30 &&
+             data.note is string && data.note.size() <= 300 &&
+             (data.netBalance is int || data.netBalance is float) &&
+             (data.totalGiven is int || data.totalGiven is float) && data.totalGiven >= 0 &&
+             (data.totalReceived is int || data.totalReceived is float) && data.totalReceived >= 0 &&
+             data.colorHex is string && data.colorHex.size() >= 1 && data.colorHex.size() <= 16;
+    }
+
+    function isValidTransaction(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             (data.amount is int || data.amount is float) && data.amount > 0 &&
+             data.type in ['INCOME', 'EXPENSE', 'CUSTOMER_GAVE', 'CUSTOMER_RECEIVED'] &&
+             data.categoryId is string && data.categoryId.size() <= 128 &&
+             data.categoryNameEn is string && data.categoryNameEn.size() <= 60 &&
+             data.categoryNameNe is string && data.categoryNameNe.size() <= 80 &&
+             data.accountId is string && data.accountId.size() >= 1 && data.accountId.size() <= 128 &&
+             data.accountName is string && data.accountName.size() >= 1 && data.accountName.size() <= 60 &&
+             data.customerId is string && data.customerId.size() <= 128 &&
+             data.customerName is string && data.customerName.size() <= 80 &&
+             data.note is string && data.note.size() <= 500 &&
+             data.transactionEpochMs is int && data.transactionEpochMs > 0;
+    }
+
+    function isValidUserSettings(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.languageCode in ['en', 'ne'] &&
+             data.dateSystem in ['BS', 'AD', 'BOTH'] &&
+             data.currencyCode in ['NPR', 'USD', 'INR', 'EUR', 'GBP', 'AED', 'AUD', 'JPY'] &&
+             data.themeId is string && data.themeId.size() >= 1 && data.themeId.size() <= 40 &&
+             data.accentColorHex is string && data.accentColorHex.size() >= 1 && data.accentColorHex.size() <= 16 &&
+             data.appearanceMode in ['SYSTEM', 'LIGHT', 'DARK'] &&
+             data.backgroundStyle in ['GRADIENT', 'FLAT', 'AURORA_GLOW'] &&
+             (data.monthlyBudget is int || data.monthlyBudget is float) && data.monthlyBudget >= 0 &&
+             data.devanagariDigits is bool &&
+             data.languageSelected is bool;
+    }
+
+    match /users/{userId} {
+      match /accounts/{accountId} {
+        allow list: if isOwner(userId);
+        allow get, delete: if isOwner(userId) && isValidId(accountId);
+        allow create: if isOwner(userId) &&
+                         isValidId(accountId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'name', 'accountType', 'balance', 'iconKey', 'colorHex', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'accountType', 'balance', 'iconKey', 'colorHex', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidAccount(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(accountId) &&
+                         isValidAccount(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accountType', 'balance', 'iconKey', 'colorHex', 'updatedAt']);
+      }
+
+      match /categories/{categoryId} {
+        allow list: if isOwner(userId);
+        allow get, delete: if isOwner(userId) && isValidId(categoryId);
+        allow create: if isOwner(userId) &&
+                         isValidId(categoryId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'nameEn', 'nameNe', 'type', 'iconKey', 'colorHex', 'systemDefault', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'nameEn', 'nameNe', 'type', 'iconKey', 'colorHex', 'systemDefault', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidCategory(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(categoryId) &&
+                         isValidCategory(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['nameEn', 'nameNe', 'type', 'iconKey', 'colorHex', 'systemDefault', 'updatedAt']);
+      }
+
+      match /customers/{customerId} {
+        allow list: if isOwner(userId);
+        allow get, delete: if isOwner(userId) && isValidId(customerId);
+        allow create: if isOwner(userId) &&
+                         isValidId(customerId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'name', 'phone', 'note', 'netBalance', 'totalGiven', 'totalReceived', 'colorHex', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'phone', 'note', 'netBalance', 'totalGiven', 'totalReceived', 'colorHex', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidCustomer(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(customerId) &&
+                         isValidCustomer(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'note', 'netBalance', 'totalGiven', 'totalReceived', 'colorHex', 'updatedAt']);
+      }
+
+      match /transactions/{transactionId} {
+        allow list: if isOwner(userId);
+        allow get, delete: if isOwner(userId) && isValidId(transactionId);
+        allow create: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'userId', 'title', 'amount', 'type', 'categoryId', 'categoryNameEn',
+                           'categoryNameNe', 'accountId', 'accountName', 'customerId',
+                           'customerName', 'note', 'transactionEpochMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'title', 'amount', 'type', 'categoryId', 'categoryNameEn',
+                           'categoryNameNe', 'accountId', 'accountName', 'customerId',
+                           'customerName', 'note', 'transactionEpochMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidTransaction(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         isValidTransaction(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'amount', 'type', 'categoryId', 'categoryNameEn',
+                           'categoryNameNe', 'accountId', 'accountName', 'customerId',
+                           'customerName', 'note', 'transactionEpochMs', 'updatedAt'
+                         ]);
+      }
+
+      match /settings/{settingId} {
+        allow list: if isOwner(userId);
+        allow get, delete: if isOwner(userId) && isValidId(settingId);
+        allow create: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'userId', 'languageCode', 'dateSystem', 'currencyCode', 'themeId',
+                           'accentColorHex', 'appearanceMode', 'backgroundStyle', 'monthlyBudget',
+                           'devanagariDigits', 'languageSelected', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'languageCode', 'dateSystem', 'currencyCode', 'themeId',
+                           'accentColorHex', 'appearanceMode', 'backgroundStyle', 'monthlyBudget',
+                           'devanagariDigits', 'languageSelected', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidUserSettings(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         isValidUserSettings(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'languageCode', 'dateSystem', 'currencyCode', 'themeId',
+                           'accentColorHex', 'appearanceMode', 'backgroundStyle', 'monthlyBudget',
+                           'devanagariDigits', 'languageSelected', 'updatedAt'
+                         ]);
+      }
+    }
+  }
+}

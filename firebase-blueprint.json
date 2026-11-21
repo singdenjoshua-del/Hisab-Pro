@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Account": {
+      "title": "Account",
+      "description": "Financial account (Cash, Bank, Digital Wallet, Savings) owned by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID" },
+        "name": { "type": "string", "description": "Account display name" },
+        "accountType": { "type": "string", "enum": ["CASH", "BANK", "WALLET", "SAVINGS"] },
+        "balance": { "type": "number", "description": "Current balance in user currency" },
+        "iconKey": { "type": "string", "description": "Icon identifier" },
+        "colorHex": { "type": "string", "description": "Hex accent color" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "name", "accountType", "balance", "iconKey", "colorHex", "createdAt", "updatedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Bilingual income or expense category.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID" },
+        "nameEn": { "type": "string", "description": "English category name" },
+        "nameNe": { "type": "string", "description": "Nepali category name" },
+        "type": { "type": "string", "enum": ["INCOME", "EXPENSE"] },
+        "iconKey": { "type": "string", "description": "Icon identifier" },
+        "colorHex": { "type": "string", "description": "Hex color" },
+        "systemDefault": { "type": "boolean", "description": "Whether category was seeded by default" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "nameEn", "nameNe", "type", "iconKey", "colorHex", "systemDefault", "createdAt", "updatedAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer / party ledger record with outstanding receivable/payable balance.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID" },
+        "name": { "type": "string", "description": "Customer name" },
+        "phone": { "type": "string", "description": "Customer phone number" },
+        "note": { "type": "string", "description": "Customer notes" },
+        "netBalance": { "type": "number", "description": "Net receivable (positive) or payable (negative)" },
+        "totalGiven": { "type": "number", "description": "Total credit given to customer" },
+        "totalReceived": { "type": "number", "description": "Total payment received from customer" },
+        "colorHex": { "type": "string", "description": "Avatar accent hex color" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["userId", "name", "phone", "note", "netBalance", "totalGiven", "totalReceived", "colorHex", "createdAt", "updatedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Income, expense, or customer credit/payment transaction record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID" },
+        "title": { "type": "string", "description": "Transaction title" },
+        "amount": { "type": "number", "description": "Positive transaction amount" },
+        "type": { "type": "string", "enum": ["INCOME", "EXPENSE", "CUSTOMER_GAVE", "CUSTOMER_RECEIVED"] },
+        "categoryId": { "type": "string", "description": "Linked category ID" },
+        "categoryNameEn": { "type": "string", "description": "Snapshot English category name" },
+        "categoryNameNe": { "type": "string", "description": "Snapshot Nepali category name" },
+        "accountId": { "type": "string", "description": "Linked account ID" },
+        "accountName": { "type": "string", "description": "Snapshot account name" },
+        "customerId": { "type": "string", "description": "Optional linked customer ID" },
+        "customerName": { "type": "string", "description": "Optional snapshot customer name" },
+        "note": { "type": "string", "description": "Optional transaction note" },
+        "transactionEpochMs": { "type": "integer", "description": "Client-selected transaction date in UTC epoch milliseconds" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId", "title", "amount", "type", "categoryId", "categoryNameEn", "categoryNameNe",
+        "accountId", "accountName", "customerId", "customerName", "note", "transactionEpochMs",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Synchronized app settings including language, Bikram Sambat preference, currency, and theme store configuration.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID" },
+        "languageCode": { "type": "string", "enum": ["en", "ne"] },
+        "dateSystem": { "type": "string", "enum": ["BS", "AD", "BOTH"] },
+        "currencyCode": { "type": "string", "enum": ["NPR", "USD", "INR", "EUR", "GBP", "AED", "AUD", "JPY"] },
+        "themeId": { "type": "string", "description": "Selected theme preset ID" },
+        "accentColorHex": { "type": "string", "description": "Custom accent color hex" },
+        "appearanceMode": { "type": "string", "enum": ["SYSTEM", "LIGHT", "DARK"] },
+        "backgroundStyle": { "type": "string", "enum": ["GRADIENT", "FLAT", "AURORA_GLOW"] },
+        "monthlyBudget": { "type": "number", "description": "Monthly spending budget target" },
+        "devanagariDigits": { "type": "boolean", "description": "Display Nepali Devanagari numerals when true" },
+        "languageSelected": { "type": "boolean", "description": "Whether initial language selection was completed" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": [
+        "userId", "languageCode", "dateSystem", "currencyCode", "themeId", "accentColorHex",
+        "appearanceMode", "backgroundStyle", "monthlyBudget", "devanagariDigits", "languageSelected",
+        "createdAt", "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/Account" },
+      "description": "User financial accounts"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "User income and expense categories"
+    },
+    "/users/{userId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "User customer ledger records"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User financial transactions"
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "User synchronized preferences and theme settings"
+    }
+  }
+}
